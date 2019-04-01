@@ -13,8 +13,6 @@ server.get('/', (req,res) => {
 })
 
 
-
-
 server.post('/api/register', (req,res) => {
     //Creates a user using the information sent inside the body of the request. Hash the password before saving the user to the database.
     let user = req.body;
