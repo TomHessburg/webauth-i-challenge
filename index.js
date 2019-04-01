@@ -1,6 +1,7 @@
 const express = require('express');
 const server = express();
 const bcrypt = require('bcryptjs');
+const cors = require('cors');
 
 const knex = require('knex');
 const knexConfig = require('./knexfile.js');
@@ -9,6 +10,7 @@ const db = knex(knexConfig.development);
 const RestrictedRouter = require('./routers/RestrictedRouter.js');
 
 server.use(express.json());
+server.use(cors());
 
 
         //base line routes...
