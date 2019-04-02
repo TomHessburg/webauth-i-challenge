@@ -1,16 +1,42 @@
 const express = require('express');
-const server = express();
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
+
+const RestrictedRouter = require('./routers/RestrictedRouter.js');
 
 const knex = require('knex');
 const knexConfig = require('./knexfile.js');
 const db = knex(knexConfig.development);
 
-const RestrictedRouter = require('./routers/RestrictedRouter.js');
+const session = require('express-session');
+// const KnexSessionStore = require('connect-session-knex')(session);
+// const configureKnex = knexConfig.development;
 
+
+const sessionConfig = {
+    name: 'monster',
+    secret: 'keep it a secret, keep it safe!',
+    cookie: {
+      maxAge: 1000 * 60 * 15,
+      secure: false,              // use cookie over https only
+      httpOnly: true,             // false means can javascript access the cookie on the client
+    },
+    resave: false,              // avoid recreating existing sessions
+    saveUninitialized: false,   // GDPR compliance
+    // store: new KnexSessionStore({
+    //     knex: configureKnex,
+    //     tablename: 'sessions',
+    //     sidfieldname: 'sid',
+    //     createtable: true,
+    //     clearInterval: 1000 * 60 * 30, // delete expired sessions
+    //   }),
+  }; 
+
+
+const server = express();
 server.use(express.json());
 server.use(cors());
+server.use(session(sessionConfig));
 
 
         //base line routes...
@@ -37,6 +63,7 @@ server.post('/api/login', (req,res) => {
         .first()
         .then(user => {
             if(user && bcrypt.compareSync(req.body.password, user.password)){
+                req.session.user = user;
                 res.status(200).json({ message: `Logged in`, cookie: user.id });
             }else{
                 res.status(401).json({ message: 'You shall not pass!' });
@@ -52,6 +79,8 @@ server.get('/api/users', restricted, (req,res) => {
         .catch(err => res.status(500).json(err));
 
 })
+
+
 function restricted(req,res,next){
     let { username, password } = req.headers;
 
@@ -75,6 +104,7 @@ function restricted(req,res,next){
         res.status(401).json({message: "Please provied credentials"})
     }
 }
+
 
 
         //restricted routes
