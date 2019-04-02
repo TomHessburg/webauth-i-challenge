@@ -9,8 +9,7 @@ const knexConfig = require('./knexfile.js');
 const db = knex(knexConfig.development);
 
 const session = require('express-session');
-// const KnexSessionStore = require('connect-session-knex')(session);
-// const configureKnex = knexConfig.development;
+const KnexSessionStore = require('connect-session-knex')(session);
 
 
 const sessionConfig = {
@@ -23,13 +22,13 @@ const sessionConfig = {
     },
     resave: false,              // avoid recreating existing sessions
     saveUninitialized: false,   // GDPR compliance
-    // store: new KnexSessionStore({
-    //     knex: configureKnex,
-    //     tablename: 'sessions',
-    //     sidfieldname: 'sid',
-    //     createtable: true,
-    //     clearInterval: 1000 * 60 * 30, // delete expired sessions
-    //   }),
+    store: new KnexSessionStore({
+        knex: db,
+        tablename: 'sessions',
+        sidfieldname: 'sid',
+        createtable: true,
+        clearInterval: 1000 * 60 * 30, // delete expired sessions
+      }),
   }; 
 
 
@@ -64,7 +63,7 @@ server.post('/api/login', (req,res) => {
         .then(user => {
             if(user && bcrypt.compareSync(req.body.password, user.password)){
                 req.session.user = user;
-                res.status(200).json({ message: `Logged in`, cookie: user.id });
+                res.status(200).json({ message: `Logged in`});
             }else{
                 res.status(401).json({ message: 'You shall not pass!' });
             }
@@ -80,18 +79,31 @@ server.get('/api/users', restricted, (req,res) => {
 
 })
 
+server.get('/api/logout', (req, res) => {
+  
+    if(req.session) {
+      req.session.destroy(err => {
+        if(err){
+            res.status(500).json(err);
+        }else{
+            res.status(200).json({ message: 'bye, thanks for visiting!'})
+        }
+      });
+    }else{
+      res.status(500).json({message: 'you werent logged in to begin with...'})
+    }
+  
+  });
+
 
 function restricted(req,res,next){
-    let { username, password } = req.headers;
 
-    if(username && password){
+    if(req.session.user){
   
         db('users')
-            .where({ username: username })
-            .first()
-            .then(user => {
-                if (user && bcrypt.compareSync(password, user.password)) {
-                next()
+            .then(users => {
+                if (users) {
+                    next();
                 } else {
                 res.status(401).json({ message: 'YOU SHALL NOT PAAAASSSSSSSs' });
                 }
